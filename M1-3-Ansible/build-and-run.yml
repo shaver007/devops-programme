@@ -1,0 +1,53 @@
+---
+- name: Build/push/run locally
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    image_name: devops-programme
+    image_tag: v2
+    container_name: devops-programme-container
+    container_port: 3000
+    listen_port: 3000
+    app_dir: "{{ (playbook_dir + '/..') | realpath }}"
+    dockerfile_relpath: "Dockerfile"
+
+  tasks:
+
+    - name: Compose image ref and Dockerfile absolute path
+      ansible.builtin.set_fact:
+        registry_image: "localhost:5000/{{ image_name }}:{{ image_tag }}"
+        dockerfile_fullpath: "{{ app_dir }}/{{ dockerfile_relpath }}"
+
+    - name: Verify Dockerfile exists at repo root
+      ansible.builtin.stat:
+        path: "{{ dockerfile_fullpath }}"
+      register: dockerfile_stat
+
+    - name: Fail if Dockerfile is missing
+      ansible.builtin.fail:
+        msg: "Dockerfile not found at {{ dockerfile_fullpath }}. Check app_dir/dockerfile_relpath."
+      when: not dockerfile_stat.stat.exists
+
+    - name: Build image from repo root
+      community.docker.docker_image:
+        name: "{{ registry_image }}"
+        source: build
+        build:
+          path: "{{ app_dir }}"                 
+          dockerfile: "{{ dockerfile_relpath }}"
+          pull: true
+        push: false
+
+    - name: Run (or update) container from local registry
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ registry_image }}"
+        state: started
+        recreate: true
+        restart_policy: unless-stopped
+        published_ports:
+          - "{{ listen_port | int }}:{{ container_port | int }}"
+        env:
+          PORT: "{{ listen_port | string }}"
