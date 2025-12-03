@@ -1,0 +1,55 @@
+name: Lint (Python, Ansible, Docker, Kubernetes)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Python linting (flake8)
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python linters
+        run: |
+          pip install flake8
+
+      - name: Run flake8
+        run: flake8 .
+
+      # Ansible linting
+      - name: Install ansible-lint
+        run: |
+          pip install ansible ansible-lint
+
+      - name: Run ansible-lint
+        run: ansible-lint .
+
+      # Dockerfile linting (hadolint)
+      - name: Install hadolint
+        run: |
+          sudo wget -qO /usr/local/bin/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+          sudo chmod +x /usr/local/bin/hadolint
+
+      - name: Run hadolint
+        run: |
+          find . -type f -iname "Dockerfile*" -exec hadolint {} \; || true
+
+      # Kubernetes manifest linting (kubeval)
+      - name: Install kubeval
+        run: |
+          wget -q https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+          tar xf kubeval-linux-amd64.tar.gz
+          sudo mv kubeval /usr/local/bin/
+
+      - name: Run kubeval
+        run: |
+          find k8s -name "*.yaml" -o -name "*.yml" -exec kubeval {} \; || true
