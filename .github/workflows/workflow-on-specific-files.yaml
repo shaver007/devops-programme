@@ -3,6 +3,19 @@ name: Lint (Python, Ansible, Docker, Kubernetes)
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      # Python
+      - "**/*.py"
+
+      # Ansible
+      - "ansible/**"
+      - "playbooks/**/*.yml"
+      - "roles/**"
+
+      # Docker
+      - "**/Dockerfile"
+      - "**/dockerfile"
+      - "docker/**"
 
 jobs:
   lint:
